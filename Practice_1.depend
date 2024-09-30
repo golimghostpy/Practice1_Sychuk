@@ -1,0 +1,19 @@
+# depslib dependency file v1.0
+1727709322 source:/home/golimghost/Desktop/CProj/Practice_1/main.cpp
+	"libs.h"
+	"structures.h"
+
+1727709301 source:/home/golimghost/Desktop/CProj/Practice_1/structures.cpp
+	"structures.h"
+
+1727704040 /home/golimghost/Desktop/CProj/Practice_1/structures.h
+	"libs.h"
+
+1727703112 /home/golimghost/Desktop/CProj/Practice_1/libs.h
+	<iostream>
+	<nlohmann/json.hpp>
+	<fstream>
+	<filesystem>
+	"dirent.h"
+	<string>
+
