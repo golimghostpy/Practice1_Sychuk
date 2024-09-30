@@ -18,7 +18,7 @@ struct Node{
     Node(T val) : data(val), next(nullptr) {}
 };
 
-struct IntList // список чисел
+struct IntList{ // список чисел
     Node<int>* first;
     Node<int>* last;
 
