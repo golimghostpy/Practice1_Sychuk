@@ -3,6 +3,14 @@
 
 #include "libs.h"
 
+enum class SQLRequest{
+    SELECT,
+    INSERT,
+    DELETE,
+    END,
+    UNKNOWN
+};
+
 template <typename T>
 struct Node{
     T data;
@@ -10,7 +18,7 @@ struct Node{
     Node(T val) : data(val), next(nullptr) {}
 };
 
-struct IntList{
+struct IntList // список чисел
     Node<int>* first;
     Node<int>* last;
 
@@ -20,9 +28,10 @@ struct IntList{
     void push_back(int);
     Node<int>* find(int);
     void print(string);
+    void clear();
 };
 
-struct BoolList{
+struct BoolList{ // список булевых элементов
     Node<bool>* first;
     Node<bool>* last;
 
@@ -30,9 +39,10 @@ struct BoolList{
 
     bool is_empty();
     void push_back(bool);
+    void clear();
 };
 
-struct StringList{
+struct StringList{ // список строк
     int listSize;
     Node<string>* first;
     Node<string>* last;
@@ -46,6 +56,7 @@ struct StringList{
     Node<string>* word_find(const string&);
     string join(const char);
     int index_word(const string&);
+    void clear();
 };
 
 struct MatrixNode{
@@ -56,7 +67,7 @@ struct MatrixNode{
     MatrixNode(string val) : data(val), nextRow(nullptr), nextCol(nullptr) {}
 };
 
-struct StringMatrix{
+struct StringMatrix{ // матрица, заполняемая по стобцам
     MatrixNode* firstCol;
     MatrixNode* lastCol;
 
@@ -66,6 +77,7 @@ struct StringMatrix{
     void push_right(string);
     void push_down(string, int);
     void print();
+    void clear();
 };
 
 string operator*(const string&, int);

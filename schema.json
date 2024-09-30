@@ -3,6 +3,7 @@
   "tuples_limit" : 3,
   "structure" : {
       "planes" : ["company", "from", "to", "time", "cost"],
-      "passangers" : ["name", "surname", "birth_date"]
+      "passangers" : ["name", "surname", "birth_date"],
+      "food" : ["title", "cost"]
   }
 }

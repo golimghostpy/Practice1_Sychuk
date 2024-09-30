@@ -3,7 +3,25 @@
 
 int tuplesLim;
 
-StringList take_section(StringList& source, unsigned int frontInd, unsigned int backInd){
+StringList take_section(StringList&, unsigned int, unsigned int);
+void check_active(const string&, const StringList&);
+void make_active(const string&, const StringList&);
+void make_inactive(const string&, const StringList&);
+string create_db();
+StringList split(const string&, const string&);
+string remove_extra(string&);
+void write_in_csv(const string&, StringList);
+void insert_into(const string&, StringList);
+bool check_filter_delete(StringList&, StringList&, const string&);
+string low_id(const string&, int);
+void delete_from(const string&, StringList);
+bool check_filter_select(StringList&, StringList&, const string&, int, const string&);
+IntList cnt_rows(StringMatrix&);
+void select_from(const string&, StringList);
+SQLRequest get_com (const string&);
+int main();
+
+StringList take_section(StringList& source, unsigned int frontInd, unsigned int backInd){ // взятие части списка
     StringList out;
     unsigned int currInd = frontInd;
     while (currInd != backInd){
@@ -13,7 +31,7 @@ StringList take_section(StringList& source, unsigned int frontInd, unsigned int 
     return out;
 }
 
-void check_active(const string& genPath, const StringList& tables){
+void check_active(const string& genPath, const StringList& tables){ // проверка, используется ли сейчас таблица
     cout << "Now all tables will be checking until they all are free" << endl;
     while (true){
         bool isFree = true;
@@ -33,7 +51,7 @@ void check_active(const string& genPath, const StringList& tables){
     cout << "Now your reques will be completed" << endl;
 }
 
-void make_active(const string& genPath, const StringList& tables){
+void make_active(const string& genPath, const StringList& tables){ // занять таблицу
     for (auto i = tables.first; i != nullptr; i = i->next){
         string path = genPath + i->data + "/" + i->data + "_lock.txt";
         ofstream makeActive(path);
@@ -42,7 +60,7 @@ void make_active(const string& genPath, const StringList& tables){
     }
 }
 
-void make_inactive(const string& genPath, const StringList& tables){
+void make_inactive(const string& genPath, const StringList& tables){ // освободить таблицу
     for (auto i = tables.first; i != nullptr; i = i->next){
         string path = genPath + i->data + "/" + i->data + "_lock.txt";
         ofstream makeInactive(path);
@@ -51,7 +69,7 @@ void make_inactive(const string& genPath, const StringList& tables){
     }
 }
 
-string create_db(){
+string create_db(){ // создание базы данных, если ее нет
     ifstream inFile("schema.json");
     nlohmann::json schema;
     inFile >> schema;
@@ -78,34 +96,18 @@ string create_db(){
         }
         outfile.close();
 
-        ofstream lockfile(dirPath / (i.key() + "_lock.txt"));
+        ofstream lockfile(dirPath / (i.key() + "_lock.txt")); // добавлЯяем файл блокировки
         lockfile << "0";
         lockfile.close();
 
-        ofstream keys(dirPath / (i.key() + "_pk_sequence.txt"));
+        ofstream keys(dirPath / (i.key() + "_pk_sequence.txt")); // добавляем счетчик id
         keys << "1";
         keys.close();
     }
     return (string)name;
 }
 
-enum class SQLRequest{
-    SELECT,
-    INSERT,
-    DELETE,
-    END,
-    UNKNOWN
-};
-
-SQLRequest get_com (const string& command){
-    if (command == "SELECT") {return SQLRequest::SELECT;}
-    if (command == "INSERT") {return SQLRequest::INSERT;}
-    if (command == "DELETE") {return SQLRequest::DELETE;}
-    if (command == "end") {return SQLRequest::END;}
-    return SQLRequest::UNKNOWN;
-}
-
-StringList split(const string& str, const string& delimiter) {
+StringList split(const string& str, const string& delimiter) { // разбиение строки в список
     StringList result;
     string currentPart;
     int delimiterLength = delimiter.size();
@@ -134,7 +136,7 @@ StringList split(const string& str, const string& delimiter) {
     return result;
 }
 
-string remove_extra(string& removeFrom){
+string remove_extra(string& removeFrom){ // удаление лишних символов
     string newStr;
     for (auto i: removeFrom){
         if (i == '(' || i == '\'' || i == ')' || i == ',' || i == ' '){
@@ -145,7 +147,7 @@ string remove_extra(string& removeFrom){
     return newStr;
 }
 
-void write_in_csv(const string& path, StringList text){
+void write_in_csv(const string& path, StringList text){ // запись в csv файл
     ofstream out(path, ios_base::app);
     for (int i = 0; i < text.listSize; ++i){
         if(i != text.listSize - 1){
@@ -157,19 +159,20 @@ void write_in_csv(const string& path, StringList text){
     }
 }
 
-void insert_into(const string& schemaName, StringList command){
-    string table = command.find(2)->data;
+void insert_into(const string& schemaName, StringList command){ // вставка строки в бд
+    string table = command.find(2)->data; // получаем название таблицы
 
     StringList tables;
     tables.push_back(table);
     check_active(schemaName + "/", tables);
     make_active(schemaName + "/", tables);
 
-    ifstream headerRead(schemaName + '/' + table + '/' + "1.csv");
+    ifstream headerRead(schemaName + '/' + table + '/' + "1.csv"); // получение заголовка таблицы
     string header;
     headerRead >> header;
     headerRead.close();
 
+     // обновление id
     StringList data;
     ifstream pkRead(schemaName + '/' + table + '/' + table + "_pk_sequence.txt");
     string idStr;
@@ -183,9 +186,10 @@ void insert_into(const string& schemaName, StringList command){
     pkWrite.close();
 
     for (int i = 4; i < command.listSize; ++i){
-        data.push_back(remove_extra(command.find(i)->data));
+        data.push_back(remove_extra(command.find(i)->data)); // чтение вставляемых данных
     }
 
+     // поиск свободного места
     string path;
     int currFile = 1;
     do{
@@ -200,7 +204,7 @@ void insert_into(const string& schemaName, StringList command){
             ++cntLines;
         }
 
-        if (cntLines <= tuplesLim){
+        if (cntLines <= tuplesLim){ // если
             path += to_string(currFile) + ".csv";
 
             if (currFile > 1){
@@ -216,6 +220,8 @@ void insert_into(const string& schemaName, StringList command){
     }while(true);
 
     make_inactive(schemaName + "/", tables);
+    tables.clear();
+    data.clear();
 }
 
 bool check_filter_delete(StringList& header, StringList& text, const string& filter){
@@ -242,8 +248,10 @@ bool check_filter_delete(StringList& header, StringList& text, const string& fil
                 }
             }
         }
-        if (isAnd){return true;}
+        if (isAnd){orSplited.clear(); return true;}
+        andSplited.clear();
     }
+    orSplited.clear();
     return false;
 }
 
@@ -253,6 +261,7 @@ string low_id(const string& command, int lowOn){
     id -= lowOn;
     splited.find(0)->data = to_string(id);
     string newCommand = splited.join(';');
+    splited.clear();
     return newCommand;
 }
 
@@ -286,6 +295,8 @@ void delete_from(const string& schemaName, StringList command){
         ofstream updateId(path + command.find(2)->data + "_pk_seqquence.txt");
         updateId << "1";
         updateId.close();
+        tables.clear();
+        columns.clear();
         return;
     }
 
@@ -320,6 +331,8 @@ void delete_from(const string& schemaName, StringList command){
         }
         writeFile.close();
         ++currentFile;
+        header.clear();
+        save.clear();
     }while(true);
 
     ifstream pkRead(schemaName + '/' + command.find(2)->data + '/' + command.find(2)->data + "_pk_sequence.txt");
@@ -332,13 +345,9 @@ void delete_from(const string& schemaName, StringList command){
     pkWrite.close();
 
     make_inactive(schemaName + "/", tables);
+    tables.clear();
+    filter.clear();
 }
-
-
-
-
-
-
 
 bool check_filter_select(StringList& header, StringList& text, const string& filter, int currStr, const string& genPath){
     StringList orSplited = split(filter, " or ");
@@ -350,7 +359,31 @@ bool check_filter_select(StringList& header, StringList& text, const string& fil
             string colName1 = split(expression.find(0)->data, ".").find(1)->data;
             int colIndex1 = header.index_word(colName1);
             if (expression.find(2)->data[0] == '\''){
-                if (text.find(colIndex1)->data != remove_extra(expression.find(2)->data)){
+                string tab = split(expression.find(0)->data, ".").find(0)->data;
+                int currFile = 1;
+                int currStrId1 = 1;
+                string currStr1;
+                string path = genPath + tab + "/";
+                do {
+                    ifstream check(path + to_string(currFile) + ".csv");
+                    if (!check.is_open()){
+                        break;
+                    }
+                    string line;
+                    check >> line;
+                    while(check >> line && currStrId1 != currStr){
+                        ++currStrId1;
+                    }
+                    if (currStrId1 == currStr){
+                        currStr1 = line;
+                        check.close();
+                        break;
+                    }
+                    currStr1 = line;
+                    check.close();
+                    ++currFile;
+                }while(true);
+                if (split(currStr1, ";").find(colIndex1)->data != remove_extra(expression.find(2)->data)){
                     isAnd = false;
                     break;
                 }
@@ -436,9 +469,19 @@ bool check_filter_select(StringList& header, StringList& text, const string& fil
                     isAnd = false;
                     break;
                 }
+                header1.clear();
+                header2.clear();
+                condText1.clear();
+                condText2.clear();
             }
+            expression.clear();
         }
-        if (isAnd){return true;}
+        if (isAnd){
+            orSplited.clear();
+            andSplited.clear();
+
+            return true;
+        }
     }
     return false;
 }
@@ -500,7 +543,9 @@ void select_from(const string& schemaName, StringList command){
 
         for (auto i = tables.first; i != nullptr; i = i->next){
             string path = genPath + i->data + '/';
-            totalCnt /= strInTable.find(currTable)->data;
+            if (strInTable.find(currTable)->data != 0){
+                totalCnt /= strInTable.find(currTable)->data;
+            }
             for (auto j = columns.first; j != nullptr; j = j->next){
                 StringList tabNCol = split(j->data, ".");
                 if (tabNCol.find(0)->data != i->data){
@@ -528,6 +573,7 @@ void select_from(const string& schemaName, StringList command){
                         for (int k = 0; k < totalCnt; ++k){
                             toOut.push_down(splited.find(takenId)->data, currCol);
                         }
+                        splited.clear();
                     }
                     readFile.close();
                     if (currTable != 0){
@@ -541,6 +587,8 @@ void select_from(const string& schemaName, StringList command){
                         for (auto k = toOut.firstCol; k != nullptr; k = k->nextRow){
                             ++cntrFirst;
                         }
+
+                        if (cntrCurr == 0){++currFile; continue;}
 
                         for (auto m = 0; m < (cntrFirst / cntrCurr) - 1; ++m){
                             MatrixNode* currRow = currHead->nextRow;
@@ -556,8 +604,26 @@ void select_from(const string& schemaName, StringList command){
             }
             ++currTable;
         }
+
+        IntList eachCol = cnt_rows(toOut);
+        for (auto i = eachCol.first; i != nullptr; i = i->next){
+            if (i->data == 0){
+                cout << string("-") * 40 << endl;
+                for (auto j = toOut.firstCol; j != nullptr; j = j->nextCol){
+                    cout << j->data << " ";
+                }
+                cout << endl << string("-") * 40 << endl;
+                return;
+            }
+        }
+
         toOut.print();
         make_inactive(genPath, tables);
+        tables.clear();
+        columns.clear();
+        strInTable.clear();
+        toOut.clear();
+        eachCol.clear();
         return;
     }
 
@@ -621,7 +687,10 @@ void select_from(const string& schemaName, StringList command){
     currCol = 0;
     int cntInFirst = eachCol.find(0)->data * totalCnt;
     MatrixNode* prevCol = nullptr;
-    totalCnt /= eachCol.find(currCol)->data;
+    if (eachCol.find(currCol)->data != 0){
+        totalCnt /= eachCol.find(currCol)->data;
+    }
+
     for (auto i = toOut.firstCol; i != nullptr; i = i->nextCol){
         temp.push_right(i->data);
         for (auto j = i->nextRow; j != nullptr; j = j->nextRow){
@@ -631,11 +700,16 @@ void select_from(const string& schemaName, StringList command){
         }
         if (i->nextCol != prevCol){
             ++currTable;
-            totalCnt /= eachCol.find(currCol)->data;
+            if (eachCol.find(currCol)->data != 0){
+                totalCnt /= eachCol.find(currCol)->data;
+            }
         }
         ++currCol;
         prevCol = i;
     }
+
+    toOut.clear();
+    eachCol.clear();
 
     IntList newEachCol = cnt_rows(temp);
     StringMatrix totalOut;
@@ -659,6 +733,21 @@ void select_from(const string& schemaName, StringList command){
 
     totalOut.print();
     make_inactive(genPath, tables);
+    temp.clear();
+    newEachCol.clear();
+    tables.clear();
+    columns.clear();
+    totalOut.clear();
+}
+
+
+
+SQLRequest get_com (const string& command){
+    if (command == "SELECT") {return SQLRequest::SELECT;}
+    if (command == "INSERT") {return SQLRequest::INSERT;}
+    if (command == "DELETE") {return SQLRequest::DELETE;}
+    if (command == "end") {return SQLRequest::END;}
+    return SQLRequest::UNKNOWN;
 }
 
 int main()

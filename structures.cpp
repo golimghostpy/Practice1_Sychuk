@@ -4,7 +4,7 @@ bool IntList::is_empty(){
     return first == nullptr;
 }
 
-void IntList::push_back(int data){
+void IntList::push_back(int data){ // добавление элемента в конец списка
     Node<int>* newElem = new Node(data);
     if (is_empty()){
         first = newElem;
@@ -15,7 +15,7 @@ void IntList::push_back(int data){
     last = newElem;
 }
 
-Node<int>* IntList::find(int index){
+Node<int>* IntList::find(int index){ // нахождение элемента по индексу
     int counter = 0;
     Node<int>* current = first;
     while (counter < index){
@@ -25,7 +25,7 @@ Node<int>* IntList::find(int index){
     return current;
 }
 
-void IntList::print(string delimiter){
+void IntList::print(string delimiter){ // вывод
     if (is_empty()) return;
 
     Node<int>* current = first;
@@ -36,11 +36,20 @@ void IntList::print(string delimiter){
     cout << endl;
 }
 
+void IntList::clear(){ // очистка
+    while (first != nullptr){
+        Node<int>* temp = first;
+        first = first->next;
+        delete temp;
+    }
+    last = nullptr;
+}
+
 bool BoolList::is_empty(){
     return first == nullptr;
 }
 
-void BoolList::push_back(bool data){
+void BoolList::push_back(bool data){ // добавление эоемента в конец списка
     Node<bool>* newElem = new Node(data);
     if (is_empty()){
         first = newElem;
@@ -51,11 +60,20 @@ void BoolList::push_back(bool data){
     last = newElem;
 }
 
+void BoolList::clear(){ // очистка
+    while (first != nullptr){
+        Node<bool>* temp = first;
+        first = first->next;
+        delete temp;
+    }
+    last = nullptr;
+}
+
 bool StringList::is_empty(){
     return first == nullptr;
 }
 
-void StringList::push_back(string data){
+void StringList::push_back(string data){ // добавление элемента в конец списка
     ++listSize;
     Node<string>* newElem = new Node(data);
     if (is_empty()){
@@ -67,7 +85,7 @@ void StringList::push_back(string data){
     last = newElem;
 }
 
-void StringList::print(string delimiter){
+void StringList::print(string delimiter){ // вывод
     if (is_empty()) return;
 
     Node<string>* current = first;
@@ -78,7 +96,7 @@ void StringList::print(string delimiter){
     cout << endl;
 }
 
-Node<string>* StringList::find(int index){
+Node<string>* StringList::find(int index){ // нахождение элемента по индексу
     if (index >= listSize || index < 0) throw "Wrong index";
 
     int counter = 0;
@@ -90,7 +108,7 @@ Node<string>* StringList::find(int index){
     return current;
 }
 
-Node<string>* StringList::word_find(const string& word){
+Node<string>* StringList::word_find(const string& word){ // нахождение элемента по значению
     Node<string>* current = first;
     while(current->data != word){
         current = current->next;
@@ -99,7 +117,7 @@ Node<string>* StringList::word_find(const string& word){
     return current;
 }
 
-string StringList::join(const char symbol){
+string StringList::join(const char symbol){ // соеденение списка в строку
     string joined;
     Node<string>* current = first;
     while (current){
@@ -109,7 +127,7 @@ string StringList::join(const char symbol){
     return joined;
 }
 
-int StringList::index_word(const string& word){
+int StringList::index_word(const string& word){ // получение индекса искомого слова
     Node<string>* current = first;
     int id = 0;
     while (current){
@@ -120,11 +138,20 @@ int StringList::index_word(const string& word){
     return -1;
 }
 
+void StringList::clear(){ // очистка
+    while (first != nullptr){
+        Node<string>* temp = first;
+        first = first->next;
+        delete temp;
+    }
+    last = nullptr;
+}
+
 bool StringMatrix::is_empty(){
     return firstCol == nullptr;
 }
 
-void StringMatrix::push_right(string text){
+void StringMatrix::push_right(string text){ // добавление элемента в новый столбец
     MatrixNode* newElem = new MatrixNode(text);
     if (is_empty()){
         firstCol = newElem;
@@ -135,7 +162,7 @@ void StringMatrix::push_right(string text){
     lastCol = newElem;
 }
 
-void StringMatrix::push_down(string text, int colNum){
+void StringMatrix::push_down(string text, int colNum){ // добавление элемента в новую строку в определенный столбец
     MatrixNode* newElem = new MatrixNode(text);
     MatrixNode* currCol = firstCol;
     int cntr = 0;
@@ -151,7 +178,7 @@ void StringMatrix::push_down(string text, int colNum){
     currRow->nextRow = newElem;
 }
 
-void StringMatrix::print(){
+void StringMatrix::print(){ // вывод
     StringList out;
     for (auto col = firstCol; col != nullptr; col = col->nextCol){
         int currRow = 0;
@@ -169,7 +196,21 @@ void StringMatrix::print(){
     out.print("\n");
 }
 
-string operator*(const string& str, int n) {
+void StringMatrix::clear(){ // очистка
+    while (firstCol != nullptr){
+        MatrixNode* tempCol = firstCol;
+        firstCol = firstCol->nextCol;
+        while (tempCol->nextRow != nullptr){
+            MatrixNode* tempRow = tempCol->nextRow;
+            tempCol->nextRow = tempRow->nextRow;
+            delete tempRow;
+        }
+        delete tempCol;
+    }
+    lastCol = nullptr;
+}
+
+string operator*(const string& str, int n) { // переопределение операции умножения строки на число
     string result;
     for (int i = 0; i < n; ++i) {
         result += str;
