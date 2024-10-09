@@ -97,7 +97,7 @@ void StringList::print(string delimiter){ // вывод
 }
 
 Node<string>* StringList::find(int index){ // нахождение элемента по индексу
-    if (index >= listSize || index < 0) throw "Wrong index";
+    if (index >= listSize || index < 0) cout << index << endl;
 
     int counter = 0;
     Node<string>* current = first;

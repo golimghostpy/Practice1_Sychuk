@@ -15,7 +15,7 @@ void insert_into(const string&, StringList);
 bool check_filter_delete(StringList&, StringList&, const string&);
 string low_id(const string&, int);
 void delete_from(const string&, StringList);
-bool check_filter_select(StringList&, StringList&, const string&, int, const string&);
+bool check_filter_select(const string&, const string&, int);
 IntList cnt_rows(StringMatrix&);
 void select_from(const string&, StringList);
 SQLRequest get_com (const string&);
@@ -351,143 +351,89 @@ void delete_from(const string& schemaName, StringList command){ // основн�
 }
 
  // проверка условия для select
-bool check_filter_select(StringList& header, StringList& text, const string& filter, int currStr, const string& genPath){
-    StringList orSplited = split(filter, " or ");
-    for (Node<string>* i = orSplited.first; i != nullptr; i = i->next){ // приоритеты такие же как и в delete
-        StringList andSplited = split(i->data, " and ");
+bool check_filter_select(const string& schemaName, const string& filter, int currStr){
+    Node<string>* orSplited = split(filter, " OR ").first;
+    while(orSplited != nullptr){
+        Node<string>* andSplited = split(orSplited->data, " AND ").first;
         bool isAnd = true;
-        for (Node<string>* j = andSplited.first; j != nullptr; j = j->next){
-            StringList expression = split(j->data, " ");
-            string colName1 = split(expression.find(0)->data, ".").find(1)->data;
-            int colIndex1 = header.index_word(colName1);
-            if (expression.find(2)->data[0] == '\''){ // если сравнение со строкой
-                string tab = split(expression.find(0)->data, ".").find(0)->data;
-                int currFile = 1;
-                int currStrId1 = 1;
-                string currStr1;
-                string path = genPath + tab + "/";
-                do { // ищем нужную строку файла
-                    ifstream check(path + to_string(currFile) + ".csv");
-                    if (!check.is_open()){
-                        break;
-                    }
-                    string line;
-                    check >> line;
-                    while(check >> line && currStrId1 != currStr){
-                        ++currStrId1;
-                    }
-                    if (currStrId1 == currStr){
-                        currStr1 = line;
-                        check.close();
-                        break;
-                    }
-                    currStr1 = line;
-                    check.close();
-                    ++currFile;
-                }while(true);
-                if (split(currStr1, ";").find(colIndex1)->data != remove_extra(expression.find(2)->data)){ // сравниваем со строкой
+        while(andSplited != nullptr){
+            StringList eqlSplited = split(andSplited->data, " = ");
+            StringList leftSplited = split(eqlSplited.first->data, ".");
+            string leftTab = leftSplited.first->data, leftCol = leftSplited.first->next->data;
+
+            int currFile = 1;
+            int currLine = 0;
+            string leftHeader;
+            string leftLine;
+            while (true){
+                ifstream leftRead(schemaName + "/" + leftTab + "/" + to_string(currFile) + ".csv");
+
+                if (!leftRead.is_open()){
+                    break;
+                }
+
+                leftRead >> leftHeader;
+                while(leftRead >> leftLine && currLine != currStr){
+                    ++currLine;
+                }
+
+                if (currLine == currStr) break;
+                ++currFile;
+            }
+
+            StringList splitedLeftHeader = split(leftHeader, ";");
+            int leftColIndex = splitedLeftHeader.index_word(leftCol);
+            string leftValue = split(leftLine, ";").find(leftColIndex)->data;
+
+
+            if ((eqlSplited.first->next->data)[0] == '\''){
+                string rightValue = remove_extra(eqlSplited.first->next->data);
+
+                if (leftValue != rightValue){
                     isAnd = false;
                     break;
                 }
             }
             else {
-             // получаем данные для первого элемента
-                string tabName1 = split(expression.find(0)->data, ".").find(0)->data;
-                string path = genPath + tabName1 + "/";
-                ifstream forHead1(path + "1.csv");
-                string strHead1;
-                forHead1 >> strHead1;
-                forHead1.close();
-                StringList header1 = split(strHead1, ";");
-                string colName1 = split(expression.find(0)->data, ".").find(1)->data;
-                int colIndex1 = header1.index_word(colName1);
-                int currFile = 1;
-                int currStrId1 = 1;
-                string currStr1;
-                 // находим нужную строку и запоминаем
-                do {
-                    ifstream check(path + to_string(currFile) + ".csv");
-                    if (!check.is_open()){
-                        break;
-                    }
-                    string line;
-                    check >> line;
-                    while(check >> line && currStrId1 != currStr){
-                        ++currStrId1;
-                    }
-                    if (currStrId1 == currStr){
-                        currStr1 = line;
-                        check.close();
-                        break;
-                    }
-                    currStr1 = line;
-                    check.close();
-                    ++currFile;
-                }while(true);
+                StringList rightSplited = split(eqlSplited.first->next->data, ".");
+                string rightTab = rightSplited.first->data, rightCol = remove_extra(rightSplited.first->next->data);
 
-                if (currStrId1 != currStr){
-                    isAnd = false;
-                    break;
-                }
-                StringList condText1 = split(currStr1, ";");
-
-                 // получаем данные для второго элемента
-                string tabName2 = split(expression.find(0)->data, ".").find(0)->data;
-                path = genPath + tabName2 + "/";
-                ifstream forHead2(path + "1.csv");
-                string strHead2;
-                forHead2 >> strHead2;
-                forHead2.close();
-                StringList header2 = split(strHead2, ";");
-                string colName2 = split(expression.find(0)->data, ".").find(1)->data;
-                int colIndex2 = header2.index_word(colName2);
                 currFile = 1;
-                int currStrId2 = 1;
-                string currStr2;
-                 // ищем нужную строку и запоминаем
-                do {
-                    ifstream check(path + to_string(currFile) + ".csv");
-                    if (!check.is_open()){
+                currLine = 0;
+                string rightHeader;
+                string rightLine;
+                while (true){
+                    ifstream rightRead(schemaName + "/" + rightTab + "/" + to_string(currFile) + ".csv");
+
+                    if (!rightRead.is_open()){
                         break;
                     }
-                    string line;
-                    check >> line;
-                    while(check >> line && currStrId2 != currStr){
-                        ++currStrId2;
+
+                    rightRead >> rightHeader;
+                    while(rightRead >> rightLine && currLine != currStr){
+                        ++currLine;
                     }
-                    if (currStrId1 == currStr){
-                        currStr2 = line;
-                        check.close();
-                        break;
-                    }
-                    currStr2 = line;
-                    check.close();
+
+                    if (currLine == currStr) break;
                     ++currFile;
-                }while(true);
+                }
 
-                if (currStrId2 != currStr){
+                StringList splitedRightHeader = split(rightHeader, ";");
+                int rightColIndex = splitedRightHeader.index_word(rightCol);
+                string rightValue = split(rightLine, ";").find(rightColIndex)->data;
+
+                if (leftValue != rightValue){
                     isAnd = false;
                     break;
                 }
-
-                StringList condText2 = split(currStr2, ";");
-                if (condText1.find(colIndex1)->data != condText1.find(colIndex2)->data){ // сравниваем полученные строки
-                    isAnd = false;
-                    break;
-                }
-                header1.clear();
-                header2.clear();
-                condText1.clear();
-                condText2.clear();
             }
-            expression.clear();
+
+            andSplited = andSplited->next;
         }
         if (isAnd){
-            orSplited.clear();
-            andSplited.clear();
-
             return true;
         }
+        orSplited = orSplited->next;
     }
     return false;
 }
@@ -570,6 +516,7 @@ void select_from(const string& schemaName, StringList command){ // функци�
                 forHead.close();
                 StringList header = split(strHeader, ";");
                 int takenId = header.index_word(tabNCol.find(1)->data);
+                toOut.push_right(tables.find(currTable)->data + "." + tabNCol.find(1)->data);
                 int currFile = 1;
                 do{
                     ifstream readFile(path + to_string(currFile) + ".csv");
@@ -578,7 +525,6 @@ void select_from(const string& schemaName, StringList command){ // функци�
                     }
                     string line;
 
-                    toOut.push_right(tables.find(currTable)->data + "." + tabNCol.find(1)->data);
                     readFile >> line;
                     while(readFile >> line){
                         StringList splited = split(line, ";");
@@ -640,7 +586,6 @@ void select_from(const string& schemaName, StringList command){ // функци�
         eachCol.clear();
         return;
     }
-
      // получение фильтра
     string filter = take_section(command, command.index_word("WHERE") + 1, command.listSize).join(' ');
 
@@ -660,7 +605,7 @@ void select_from(const string& schemaName, StringList command){ // функци�
             StringList header = split(strHeader, ";");
             int takenId = header.index_word(tabNCol.find(1)->data);
             int currFile = 1;
-            int currStr = 1;
+            int currStr = 0;
             toOut.push_right(j->data);
             do{
                 ifstream readFile(path + to_string(currFile) + ".csv");
@@ -672,7 +617,7 @@ void select_from(const string& schemaName, StringList command){ // функци�
                 readFile >> line;
                 while(readFile >> line){
                     StringList splited = split(line, ";");
-                    if (check_filter_select(header, splited, filter, currStr, genPath)){
+                    if (check_filter_select(schemaName, filter, currStr)){
                         toOut.push_down(splited.find(takenId)->data, currCol);
                     }
                     ++currStr;
@@ -684,10 +629,8 @@ void select_from(const string& schemaName, StringList command){ // функци�
         }
     }
 
-     // проверка наличия данных в полученной матрице
-    IntList eachCol = cnt_rows(toOut);
-    int totalCnt = 1;
-    for (auto i = eachCol.first; i != nullptr; i = i->next){
+    IntList cntInEach = cnt_rows(toOut);
+    for (auto i = cntInEach.first; i != nullptr; i = i->next){
         if (i->data == 0){
             cout << string("-") * 40 << endl;
             for (auto j = toOut.firstCol; j != nullptr; j = j->nextCol){
@@ -696,70 +639,51 @@ void select_from(const string& schemaName, StringList command){ // функци�
             cout << endl << string("-") * 40 << endl;
             return;
         }
-        totalCnt *= i->data;
     }
 
+    int total = 1;
+    for (auto i = cntInEach.first->next; i != nullptr; i = i->next){
+        total *= i->data;
+    }
+
+    // повторяем каждую строчку нужное кол-во раз
     StringMatrix temp;
-    currTable = 0;
     currCol = 0;
-    int cntInFirst = eachCol.find(0)->data * totalCnt;
-    MatrixNode* prevCol = nullptr;
-    if (eachCol.find(currCol)->data != 0){
-        totalCnt /= eachCol.find(currCol)->data;
-    }
-
-     // повторение несколько раз подряд нужное количество раз
     for (auto i = toOut.firstCol; i != nullptr; i = i->nextCol){
         temp.push_right(i->data);
         for (auto j = i->nextRow; j != nullptr; j = j->nextRow){
-            for (int k = 0; k < totalCnt; ++k){
+            for (int k = 0; k < total; ++k){
                 temp.push_down(j->data, currCol);
             }
         }
-        if (i->nextCol != prevCol){
-            ++currTable;
-            if (eachCol.find(currCol)->data != 0){
-                totalCnt /= eachCol.find(currCol)->data;
-            }
-        }
+        total /= cntInEach.find(currCol)->data;
         ++currCol;
-        prevCol = i;
     }
 
+    // повторяем каждый блок нужное кол-во раз
     toOut.clear();
-    eachCol.clear();
-
-     // дублирование столбцов вниз
-    IntList newEachCol = cnt_rows(temp);
-    StringMatrix totalOut;
+    StringMatrix finalOut;
+    cntInEach = cnt_rows(temp);
     currCol = 0;
     for (auto i = temp.firstCol; i != nullptr; i = i->nextCol){
-        totalOut.push_right(i->data);
-        if (i == temp.firstCol){
+        finalOut.push_right(i->data);
+        for (int k = 0; k < (cntInEach.find(0)->data / cntInEach.find(currCol)->data); ++k){
             for (auto j = i->nextRow; j != nullptr; j = j->nextRow){
-                totalOut.push_down(j->data, currCol);
-            }
-        }
-        else{
-            for (int k = 0; k < (newEachCol.find(0)->data / newEachCol.find(currCol)->data); ++k){
-                for (auto j = i->nextRow; j != nullptr; j = j->nextRow){
-                    totalOut.push_down(j->data, currCol);
-                }
+                finalOut.push_down(j->data, currCol);
             }
         }
         ++currCol;
     }
 
-    totalOut.print();
-    make_inactive(genPath, tables);
+
+    finalOut.print();
     temp.clear();
-    newEachCol.clear();
+    finalOut.clear();
+    cntInEach.clear();
+    make_inactive(genPath, tables);
     tables.clear();
     columns.clear();
-    totalOut.clear();
 }
-
-
 
 SQLRequest get_com (const string& command){ // выбор токена
     if (command == "SELECT") {return SQLRequest::SELECT;}
