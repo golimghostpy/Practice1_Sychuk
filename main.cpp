@@ -181,13 +181,21 @@ void insert_into(const string& schemaName, StringList command){ // вставк�
     data.push_back(idStr);
     int newID = stoi(idStr) + 1;
 
-    ofstream pkWrite(schemaName + '/' + table + '/' + table + "_pk_sequence.txt");
-    pkWrite << to_string(newID);
-    pkWrite.close();
-
     for (int i = 4; i < command.listSize; ++i){
         data.push_back(remove_extra(command.find(i)->data)); // чтение вставляемых данных
     }
+
+    if (split(header, ";").listSize != data.listSize){
+        cout << "Wrong count of arguments" << endl;
+        make_inactive(schemaName + "/", tables);
+        tables.clear();
+        data.clear();
+        return;
+    }
+
+    ofstream pkWrite(schemaName + '/' + table + '/' + table + "_pk_sequence.txt");
+    pkWrite << to_string(newID);
+    pkWrite.close();
 
      // поиск свободного места
     string path;
@@ -198,7 +206,7 @@ void insert_into(const string& schemaName, StringList command){ // вставк�
         if (check.bad()){
             break;
         }
-        int cntLines = 0;
+        int cntLines = -1;
         string line;
         while(check >> line){
             ++cntLines;
